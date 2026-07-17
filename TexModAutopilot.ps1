@@ -1,14 +1,14 @@
 # ============================================================
-#  EasyTexMod - opens TexMod, points it at the game, loads the
+#  TexModAutopilot - opens TexMod, points it at the game, loads the
 #  .tpf packages from the Mod folder (in the order set in
-#  EasyTexMod.ini) and clicks Run.
+#  TexModAutopilot.ini) and clicks Run.
 #
 #  The automation talks directly to TexMod's window controls
 #  through Win32 messages (BM_CLICK / WM_SETTEXT) - no blind
 #  coordinate clicking - so it works at any DPI, resolution or
 #  Windows language.
 #
-#  Usage:  EasyTexMod.bat   (or: powershell -File EasyTexMod.ps1)
+#  Usage:  TexModAutopilot.bat   (or: powershell -File TexModAutopilot.ps1)
 #  Optional parameters:
 #    -NoRun      ignore AutoRun and do NOT click Run (to inspect TexMod)
 #    -TestMode   click Run, wait for the game window, then kill game + TexMod
@@ -20,8 +20,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$IniPath   = Join-Path $ScriptDir 'EasyTexMod.ini'
-$LogPath   = Join-Path $ScriptDir 'EasyTexMod.log'
+$IniPath   = Join-Path $ScriptDir 'TexModAutopilot.ini'
+$LogPath   = Join-Path $ScriptDir 'TexModAutopilot.log'
 
 # --- logging -------------------------------------------------
 Set-Content -Path $LogPath -Value '' -Encoding UTF8
@@ -32,7 +32,7 @@ function Log([string]$msg) {
 }
 function Fail([string]$msg) {
     Log "ERROR: $msg"
-    Log 'Tip: increase Delay in EasyTexMod.ini and try again. See EasyTexMod.log.'
+    Log 'Tip: increase Delay in TexModAutopilot.ini and try again. See TexModAutopilot.log.'
     exit 1
 }
 
@@ -203,7 +203,7 @@ function Complete-FileDialog([IntPtr]$dlg, [string]$path, [string]$what) {
 }
 
 # --- read the ini --------------------------------------------
-if (-not (Test-Path $IniPath)) { Fail "EasyTexMod.ini not found in $ScriptDir" }
+if (-not (Test-Path $IniPath)) { Fail "TexModAutopilot.ini not found in $ScriptDir" }
 $settings = @{}
 $loadOrder = New-Object System.Collections.ArrayList
 $section = ''
@@ -232,9 +232,9 @@ $CloseOnExit = ($settings['CloseTexModOnExit'] -ne '0')
 if ($NoRun) { $AutoRun = $false }
 if ($TestMode) { $AutoRun = $true }
 
-if (-not (Test-Path $TexModExe)) { Fail "TexMod not found: $TexModExe (edit EasyTexMod.ini)" }
-if (-not (Test-Path $GameExe))   { Fail "game executable not found: $GameExe (edit EasyTexMod.ini)" }
-if (-not (Test-Path $ModFolder)) { Fail "mod folder not found: $ModFolder (edit EasyTexMod.ini)" }
+if (-not (Test-Path $TexModExe)) { Fail "TexMod not found: $TexModExe (edit TexModAutopilot.ini)" }
+if (-not (Test-Path $GameExe))   { Fail "game executable not found: $GameExe (edit TexModAutopilot.ini)" }
+if (-not (Test-Path $ModFolder)) { Fail "mod folder not found: $ModFolder (edit TexModAutopilot.ini)" }
 
 # build the tpf list
 $tpfs = New-Object System.Collections.ArrayList
@@ -337,7 +337,7 @@ $nextNotice = 15
 while ($swWin.Elapsed.TotalSeconds -lt 300) {
     $game.Refresh()
     if ($game.HasExited) {
-        Fail 'the game process exited before showing a window. Run EasyTexMod again; if it keeps happening, open TexMod and click Run manually to see the error.'
+        Fail 'the game process exited before showing a window. Run TexModAutopilot again; if it keeps happening, open TexMod and click Run manually to see the error.'
     }
     if ($game.MainWindowHandle -ne [IntPtr]::Zero) { $winOk = $true; break }
     if ($swWin.Elapsed.TotalSeconds -ge $nextNotice) {

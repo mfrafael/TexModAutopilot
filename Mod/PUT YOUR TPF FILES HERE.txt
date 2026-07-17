@@ -1,4 +1,4 @@
 Drop your .tpf texture packages in this folder.
 
-EasyTexMod loads every .tpf found here (alphabetical order), unless you
-define an explicit order in the [LoadOrder] section of EasyTexMod.ini.
+TexModAutopilot loads every .tpf found here (alphabetical order), unless you
+define an explicit order in the [LoadOrder] section of TexModAutopilot.ini.
