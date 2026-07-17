@@ -37,7 +37,6 @@ function Fail([string]$msg) {
 }
 
 # --- Win32 ---------------------------------------------------
-Add-Type -AssemblyName System.Windows.Forms
 Add-Type @'
 using System;
 using System.Text;
@@ -163,21 +162,36 @@ function Force-Foreground([IntPtr]$h) {
 # shows a dropdown menu first (then we pick the first item, "Browse...",
 # with down-arrow + Enter).
 function Open-BrowseDialog([IntPtr]$mainWnd, [IntPtr]$btn, [uint32]$ownerPid, [string]$titleRegex, [string]$what) {
-    [void][ETM]::SetForegroundWindow($mainWnd)
-    Start-Sleep -Milliseconds $Delay
-    Click-Button $btn
-    $sw = [Diagnostics.Stopwatch]::StartNew()
-    while ($sw.ElapsedMilliseconds -lt 8000) {
-        $dlg = Find-TopWindow $ownerPid '#32770' $titleRegex
-        if ($dlg) { return $dlg }
-        # popup menus have the global window class #32768
-        $m = [ETM]::FindWindow('#32768', $null)
-        if ($m -ne [IntPtr]::Zero -and [ETM]::IsWindowVisible($m)) {
-            Start-Sleep -Milliseconds $Delay
-            [System.Windows.Forms.SendKeys]::SendWait('{DOWN}{ENTER}')
-            return (Wait-For { Find-TopWindow $ownerPid '#32770' $titleRegex } 8000 "'$what' dialog")
+    # a posted click can occasionally get lost while TexMod is busy, so try twice
+    foreach ($attempt in 1..2) {
+        [void][ETM]::SetForegroundWindow($mainWnd)
+        Start-Sleep -Milliseconds $Delay
+        Click-Button $btn
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        $menuKeysSent = $false
+        while ($sw.ElapsedMilliseconds -lt 8000) {
+            $dlg = Find-TopWindow $ownerPid '#32770' $titleRegex
+            if ($dlg) { return $dlg }
+            if (-not $menuKeysSent) {
+                # Some TexMod builds show a dropdown menu (class #32768) instead of
+                # opening the dialog directly; pick its first item ("Browse...").
+                # Only menus owned by the TexMod process count (other apps' menus are
+                # ignored), and the keys are POSTED to TexMod's own message queue -
+                # focus-independent, nothing ever leaks into other applications.
+                $menu = Find-TopWindow $ownerPid '#32768' ''
+                if ($menu) {
+                    Start-Sleep -Milliseconds $Delay
+                    foreach ($vk in 0x28, 0x0D) {  # VK_DOWN, VK_RETURN
+                        [void][ETM]::PostMessage($mainWnd, 0x0100, [IntPtr]$vk, [IntPtr]::Zero)  # WM_KEYDOWN
+                        [void][ETM]::PostMessage($mainWnd, 0x0101, [IntPtr]$vk, [IntPtr]::Zero)  # WM_KEYUP
+                        Start-Sleep -Milliseconds 100
+                    }
+                    $menuKeysSent = $true
+                }
+            }
+            Start-Sleep -Milliseconds 100
         }
-        Start-Sleep -Milliseconds 100
+        if ($attempt -eq 1) { Log "  '$what' dialog did not open - clicking again..." }
     }
     Fail "timed out waiting for the dialog/menu of '$what'"
 }
